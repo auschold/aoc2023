@@ -7,20 +7,30 @@ fun main() {
 
     val almanac = parseAlmanac(file.readLines())
 
-    val minimumLocation = almanac.seeds
+    val minimumLocation1 = almanac.singleSeeds
         .minOfOrNull { almanac.lookupLocationForSeed(it) }
+    println(minimumLocation1)
 
-    println(minimumLocation)
+    val minimumLocation2 = generateSequence(0L) { it + 1 }
+        .map { it to almanac.lookupInvertSeedForLocation(it) }
+        .filter { almanac.hasSeedInRange(it.second) }
+        .first()
+    println(minimumLocation2.first)
 }
 
 private fun parseAlmanac(lines: List<String>): Almanac {
-    val seeds = lines.first { it.startsWith("seeds:") }
+    val singleSeeds = lines.first { it.startsWith("seeds:") }
         .substringAfter(":")
         .split(" ")
         .filterNot { it.isBlank() }
         .map { it.toLong() }
 
+    val seedRanges = singleSeeds
+        .chunked(2)
+        .map { LongRange(it[0], it[0] + it[1] - 1) }
+
     val maps = listOf(
+        // may be compact these projections to begin with? should decrease runtime a bit?
         parseMap(lines, "seed-to-soil"),
         parseMap(lines, "soil-to-fertilizer"),
         parseMap(lines, "fertilizer-to-water"),
@@ -30,7 +40,7 @@ private fun parseAlmanac(lines: List<String>): Almanac {
         parseMap(lines, "humidity-to-location"),
     )
 
-    return Almanac(seeds, maps)
+    return Almanac(singleSeeds, seedRanges, maps)
 }
 
 private fun parseMap(lines: List<String>, label: String): AlmanacMap {
@@ -46,12 +56,25 @@ private fun parseMap(lines: List<String>, label: String): AlmanacMap {
 }
 
 private data class Almanac(
-    val seeds: List<Long>,
+    val singleSeeds: List<Long>,
+    val seedRanges: List<LongRange>,
     val almanacMaps: List<AlmanacMap>
 ) {
+
+    fun hasSeedInRange(seedIndex: Long): Boolean =
+        seedRanges.map { it.contains(seedIndex) }
+            .reduce { a, b -> a || b }
+
     fun lookupLocationForSeed(seedIndex: Long): Long {
         var result = seedIndex
         almanacMaps.forEach { result = it.lookupProjectedIndex(result) }
+        return result
+    }
+
+    fun lookupInvertSeedForLocation(locationIndex: Long): Long {
+        var result : Long = locationIndex
+        almanacMaps.reversed()
+            .forEach { result = it.lookupInverseProjectedIndex(result) }
         return result
     }
 }
@@ -61,6 +84,10 @@ private class AlmanacMap(
 ) {
     fun lookupProjectedIndex(index: Long): Long = projections
         .firstNotNullOfOrNull { it.project(index) }
+        ?: index
+
+    fun lookupInverseProjectedIndex(index: Long): Long = projections
+        .firstNotNullOfOrNull { it.inverseProjection(index) }
         ?: index
 }
 
@@ -72,6 +99,15 @@ private data class RangeProjection(
     fun project(index: Long): Long? {
         return if (sourceRange.contains(index)) {
             (index - sourceRange.first) + destinationOffset
+        } else {
+            null
+        }
+    }
+
+    fun inverseProjection(index: Long): Long? {
+        val projected = index - destinationOffset + sourceRange.first
+        return if (sourceRange.contains(projected)) {
+            projected
         } else {
             null
         }
