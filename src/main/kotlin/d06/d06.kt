@@ -5,7 +5,12 @@ import java.io.File
 fun main() {
     val file = File("src/main/resources/d06/input.txt")
 
-    val historicRaceRecord = parseHistoricRecord(file.readLines())
+    puzzle1(file)
+    puzzle2(file)
+}
+
+private fun puzzle1(file: File) {
+    val historicRaceRecord = parseHistoricRecord1(file.readLines())
 
     val betterOutcomes = historicRaceRecord
         .map { findBetterRaceOutcome(it) }
@@ -17,7 +22,14 @@ fun main() {
     println(checksum1)
 }
 
-private fun parseHistoricRecord(lines: List<String>): HistoricRaceRecord {
+private fun puzzle2(file: File) {
+    val historicRaceRecord = parseHistoricRecord2(file.readLines())
+    val betterOutcomes = findBetterRaceOutcome(historicRaceRecord)
+    val checksum2 = betterOutcomes.size
+    println(checksum2)
+}
+
+private fun parseHistoricRecord1(lines: List<String>): HistoricRaceRecord {
     val times = lines.first { it.startsWith("Time:") }
         .substringAfter(":")
         .split(" ")
@@ -31,6 +43,20 @@ private fun parseHistoricRecord(lines: List<String>): HistoricRaceRecord {
         .map { it.toLong() }
 
     return times.mapIndexed { index, time -> HistoricRound(time, distances[index])}
+}
+
+private fun parseHistoricRecord2(lines: List<String>): HistoricRound {
+    val duration = lines.first { it.startsWith("Time:") }
+        .substringAfter(":")
+        .replace(" ", "")
+        .toLong()
+
+    val distance = lines.first { it.startsWith("Distance:") }
+        .substringAfter(":")
+        .replace(" ", "")
+        .toLong()
+
+    return HistoricRound(duration, distance)
 }
 
 private fun findBetterRaceOutcome(historic: HistoricRound): List<RacePrediction> =
