@@ -2,7 +2,7 @@ package d08
 
 import java.io.File
 
-private val nodeRegex = Regex("""^(?<label>[A-Z]{3}) = \((?<left>[A-Z]{3}), (?<right>[A-Z]{3})\)$""")
+private val nodeRegex = Regex("""^(?<label>[0-9A-Z]{3}) = \((?<left>[0-9A-Z]{3}), (?<right>[0-9A-Z]{3})\)$""")
 
 fun main() {
     val file = File("src/main/resources/d08/input.txt")
@@ -10,16 +10,27 @@ fun main() {
     val instructions = file.readLines().first().trim()
     val graph = parseGraph(file.readLines())
 
-    val steps = traverseGraph(graph, instructions)
-    println(steps)
+    val stepsHuman = traverseGraphHuman(graph, instructions)
+    println(stepsHuman)
+
+    val stepsGhost = traverseGraphGhost(graph, instructions)
+    println(stepsGhost)
 }
 
-private fun traverseGraph(graph: Graph, instructions: String): Int {
-    var location = "AAA"
-    var counter = 0
+private fun traverseGraphGhost(graph: Graph, instructions: String): Long =
+    graph.keys.filter { it.endsWith("A") }
+        .map { traverseGraph(graph, instructions, it) { location -> location.endsWith("Z") } }
+        .reduce { a, b -> lcm(a, b) }
+
+private fun traverseGraphHuman(graph: Graph, instructions: String): Long =
+    traverseGraph(graph, instructions, "AAA") { it == "ZZZ" }
+
+private fun traverseGraph(graph: Graph, instructions: String, startLocation: String, stopPredicate: (String) -> Boolean): Long {
+    var location = startLocation
+    var counter = 0L
     var instruction = Instruction(instructions)
 
-    while (location != "ZZZ") {
+    while (!stopPredicate.invoke(location)) {
         val node = graph[location]!!
         location = if (instruction.currentInstruction() == 'L') {
             node.first
@@ -57,3 +68,9 @@ private data class Instruction(
             Instruction(rawInstructions, currentInstructionIndex + 1)
         }
 }
+
+private fun gcd(a: Long, b: Long): Long =
+    if (b == 0L) a else gcd(b, a % b)
+
+private fun lcm(a: Long, b: Long) =
+    a * (b / gcd(a, b))
