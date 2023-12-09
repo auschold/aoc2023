@@ -8,11 +8,16 @@ fun main() {
     val sequences = file.readLines()
         .map { ValueSequence.of(it) }
 
-    val extrapolatedSequences = sequences
-        .map { it.extrapolate() }
 
-    val checksum1 = extrapolatedSequences.sumOf { it.values.last() }
+    val checksum1 = sequences
+        .map { it.extrapolate(false) }
+        .sumOf { it.values.last() }
     println(checksum1)
+
+    val checksum2 = sequences
+        .map { it.extrapolate(true) }
+        .sumOf { it.values.first() }
+    println(checksum2)
 }
 
 
@@ -35,13 +40,19 @@ private data class ValueSequence(
     fun isAllZeros() =
         values.filterNot { it == 0L }.isEmpty()
 
-    fun extrapolate(): ValueSequence {
+    fun extrapolate(backward: Boolean): ValueSequence {
         if (isAllZeros()) {
-            return ValueSequence(values.plus(0L))
+            return ValueSequence(values + 0L)
         }
 
-        val extrapolatedDerivation = derivation.extrapolate()
-        val extrapolatedValue = extrapolatedDerivation.values.last() + this.values.last()
-        return ValueSequence(values.plus(extrapolatedValue))
+        val extrapolatedDerivation = derivation.extrapolate(backward)
+
+        val extrapolatedValue = if (backward) {
+            values.first() - extrapolatedDerivation.values.first()
+        } else {
+            extrapolatedDerivation.values.last() + values.last()
+        }
+
+        return ValueSequence(if (backward) listOf(extrapolatedValue) + values else values + extrapolatedValue)
     }
 }
